@@ -1,0 +1,865 @@
+-- Roblox Jailbreak HeadLock, Fly & NoClip Combo Script
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Combined Configuration
+local Config = {
+    -- HeadLock Settings
+    HeadLock = {
+        Enabled = false,
+        FOV = 120,
+        minFOV = 1,
+        maxFOV = 1000,
+        Key = Enum.KeyCode.Q,
+        Prediction = 0.15,
+        Smoothing = 0.3
+    },
+    
+    -- Flight Settings
+    Flight = {
+        Enabled = false,
+        Speed = 100,
+        minSpeed = 1,
+        maxSpeed = 5000,
+        Key = Enum.KeyCode.F
+    },
+    
+    -- NoClip Settings
+    NoClip = {
+        Enabled = false,
+        Key = Enum.KeyCode.N
+    },
+    
+    -- UI Settings
+    UI = {
+        Visible = true,
+        ToggleKey = Enum.KeyCode.RightShift,
+        AccentColor = Color3.fromRGB(0, 200, 100),
+        BackgroundColor = Color3.fromRGB(30, 30, 35),
+        SectionColor = Color3.fromRGB(40, 40, 45),
+        TextColor = Color3.fromRGB(240, 240, 240)
+    }
+}
+
+-- Create Main UI
+local TweenService = game:GetService("TweenService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "JailbreakToolsUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = CoreGui
+
+-- Animated glassy background
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 340, 0, 390)
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -195)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 34, 44)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+-- Glass blur
+local blur = Instance.new("ImageLabel")
+blur.BackgroundTransparency = 1
+blur.Image = "rbxassetid://5553946656"
+blur.ImageTransparency = 0.7
+blur.ScaleType = Enum.ScaleType.Slice
+blur.SliceCenter = Rect.new(10,10,118,118)
+blur.Size = UDim2.new(1,0,1,0)
+blur.Position = UDim2.new(0,0,0,0)
+blur.ZIndex = 0
+blur.Parent = mainFrame
+
+-- Drop shadow
+local shadow = Instance.new("ImageLabel")
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageTransparency = 0.6
+shadow.Size = UDim2.new(1, 32, 1, 32)
+shadow.Position = UDim2.new(0, -16, 0, -16)
+shadow.ZIndex = -1
+shadow.Parent = mainFrame
+
+-- Modern rounded corners
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 18)
+corner.Parent = mainFrame
+
+-- Animated accent bar (gradient, shimmer)
+local accentBar = Instance.new("Frame")
+accentBar.Size = UDim2.new(1, 0, 0, 7)
+accentBar.Position = UDim2.new(0, 0, 0, 0)
+accentBar.BackgroundTransparency = 1
+accentBar.BorderSizePixel = 0
+accentBar.Parent = mainFrame
+
+local accentGradient = Instance.new("UIGradient")
+accentGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 180)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 180, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 180))
+}
+accentGradient.Rotation = 0
+accentGradient.Parent = accentBar
+
+local accentGlow = Instance.new("ImageLabel")
+accentGlow.BackgroundTransparency = 1
+accentGlow.Image = "rbxassetid://1316045217"
+accentGlow.ImageColor3 = Color3.fromRGB(0,255,180)
+accentGlow.ImageTransparency = 0.7
+accentGlow.Size = UDim2.new(1,0,1,12)
+accentGlow.Position = UDim2.new(0,0,0,-6)
+accentGlow.ZIndex = 1
+accentGlow.Parent = accentBar
+
+-- Animated accent bar shimmer
+spawn(function()
+    while true do
+        accentGradient.Offset = Vector2.new(math.sin(tick()/2)*0.2,0)
+        accentGlow.ImageColor3 = Color3.fromHSV((tick()/6)%1,1,1)
+        wait(0.03)
+    end
+end)
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -40, 0, 38)
+title.Position = UDim2.new(0, 20, 0, 12)
+title.Text = "JAILBREAK ULTIMATE TOOLBOX"
+title.TextColor3 = Color3.fromRGB(220, 255, 255)
+title.TextStrokeTransparency = 0.7
+title.TextStrokeColor3 = Color3.fromRGB(0, 255, 180)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 2
+title.Parent = mainFrame
+
+-- Subtle animated background (moving gradient)
+local bgGradient = Instance.new("UIGradient")
+bgGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30,34,44)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(44,54,64))
+}
+bgGradient.Rotation = 45
+bgGradient.Parent = mainFrame
+spawn(function()
+    while true do
+        bgGradient.Offset = Vector2.new(math.sin(tick()/4)*0.1, math.cos(tick()/5)*0.1)
+        wait(0.05)
+    end
+end)
+
+-- Fancy open/close animation
+local isUIOpen = false
+local function animateOpen()
+    mainFrame.Visible = true
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Size = UDim2.new(0, 60, 0, 60)
+    mainFrame.Position = UDim2.new(0.5, -30, 0.5, -30)
+    TweenService:Create(mainFrame, TweenInfo.new(0.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.15,
+        Size = UDim2.new(0, 340, 0, 390),
+        Position = UDim2.new(0.5, -170, 0.5, -195)
+    }):Play()
+    isUIOpen = true
+end
+local function animateClose()
+    local tw = TweenService:Create(mainFrame, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 60, 0, 60),
+        Position = UDim2.new(0.5, -30, 0.5, -30)
+    })
+    tw:Play()
+    tw.Completed:Wait()
+    mainFrame.Visible = false
+    isUIOpen = false
+end
+
+-- Toggle UI function for RightShift and close button
+local function toggleUI()
+    if isUIOpen then
+        animateClose()
+    else
+        animateOpen()
+    end
+end
+
+-- Open on load
+animateOpen()
+
+-- Close button (modern, hover effect)
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 32, 0, 32)
+closeButton.Position = UDim2.new(1, -40, 0, 10)
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255,255,255)
+closeButton.TextStrokeTransparency = 0.5
+closeButton.TextStrokeColor3 = Color3.fromRGB(255,0,80)
+closeButton.TextSize = 20
+closeButton.Font = Enum.Font.GothamBlack
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 80)
+closeButton.BackgroundTransparency = 0.15
+closeButton.BorderSizePixel = 0
+closeButton.ZIndex = 3
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeButton
+closeButton.Parent = mainFrame
+
+local closeGlow = Instance.new("UIStroke")
+closeGlow.Color = Color3.fromRGB(255,0,80)
+closeGlow.Thickness = 2
+closeGlow.Transparency = 0.5
+closeGlow.Parent = closeButton
+
+closeButton.MouseEnter:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.15), {BackgroundTransparency=0.05}):Play()
+    TweenService:Create(closeGlow, TweenInfo.new(0.15), {Transparency=0}):Play()
+end)
+closeButton.MouseLeave:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.15), {BackgroundTransparency=0.15}):Play()
+    TweenService:Create(closeGlow, TweenInfo.new(0.15), {Transparency=0.5}):Play()
+end)
+closeButton.MouseButton1Click:Connect(toggleUI)
+
+-- Make UI draggable
+local dragging, dragInput, dragStart, startPos
+
+-- Only allow dragging from the title label area
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+title.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Section creation helper for modern look
+local function createSection(y, color1, color2, titleText)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.92, 0, 0, 92)
+    frame.Position = UDim2.new(0.04, 0, 0, y)
+    frame.BackgroundColor3 = color1
+    frame.BackgroundTransparency = 0.08
+    frame.BorderSizePixel = 0
+    frame.Parent = mainFrame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color1),
+        ColorSequenceKeypoint.new(1, color2)
+    }
+    grad.Rotation = 90
+    grad.Parent = frame
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 24)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.Text = "  "..titleText
+    title.TextColor3 = Color3.fromRGB(255,255,255)
+    title.TextStrokeTransparency = 0.7
+    title.TextStrokeColor3 = color2
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+    return frame
+end
+
+-- HeadLock Section
+local headLockFrame = createSection(54, Color3.fromRGB(40,60,80), Color3.fromRGB(0,255,180), "HeadLock [Q]")
+
+local fovLabel = Instance.new("TextLabel")
+fovLabel.Size = UDim2.new(1, 0, 0, 16)
+fovLabel.Position = UDim2.new(0, 0, 0, 20)
+fovLabel.Text = "  FOV: "..Config.HeadLock.FOV
+fovLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+fovLabel.BackgroundTransparency = 1
+fovLabel.Font = Enum.Font.Code
+fovLabel.TextSize = 11
+fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovLabel.Parent = headLockFrame
+
+local fovSlider = Instance.new("Frame")
+fovSlider.Size = UDim2.new(0.86, 0, 0, 7)
+fovSlider.Position = UDim2.new(0.07, 0, 0, 38)
+fovSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+fovSlider.BorderSizePixel = 0
+local fovSliderCorner = Instance.new("UICorner")
+fovSliderCorner.CornerRadius = UDim.new(1, 0)
+fovSliderCorner.Parent = fovSlider
+fovSlider.Parent = headLockFrame
+
+local fovFill = Instance.new("Frame")
+fovFill.Size = UDim2.new(Config.HeadLock.FOV/Config.HeadLock.maxFOV, 0, 1, 0)
+fovFill.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+fovFill.BorderSizePixel = 0
+local fovFillCorner = Instance.new("UICorner")
+fovFillCorner.CornerRadius = UDim.new(1, 0)
+fovFillCorner.Parent = fovFill
+fovFill.Parent = fovSlider
+
+-- Add a blue circle to FOV slider
+local fovCircle = Instance.new("Frame")
+fovCircle.Size = UDim2.new(0, 16, 0, 16)
+fovCircle.Position = UDim2.new(Config.HeadLock.FOV / Config.HeadLock.maxFOV, -8, 0.5, -8)
+fovCircle.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+fovCircle.BorderSizePixel = 0
+local fovCircleCorner = Instance.new("UICorner")
+fovCircleCorner.CornerRadius = UDim.new(1, 0)
+fovCircleCorner.Parent = fovCircle
+fovCircle.ZIndex = 1
+fovCircle.Parent = fovSlider
+
+local headLockToggle = Instance.new("TextButton")
+headLockToggle.Size = UDim2.new(0.7, 0, 0, 22)
+headLockToggle.Position = UDim2.new(0.15, 0, 0, 60)
+headLockToggle.Text = "Enable HeadLock"
+headLockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+headLockToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+headLockToggle.Font = Enum.Font.SourceSans
+headLockToggle.TextSize = 13
+local headLockToggleCorner = Instance.new("UICorner")
+headLockToggleCorner.CornerRadius = UDim.new(0, 2)
+headLockToggleCorner.Parent = headLockToggle
+headLockToggle.Parent = headLockFrame
+
+-- Add toggle indicator (yellow)
+local headLockIndicator = Instance.new("Frame")
+headLockIndicator.Size = UDim2.new(0, 10, 0, 10)
+headLockIndicator.Position = UDim2.new(0.88, 0, 0.18, 0)
+headLockIndicator.BackgroundColor3 = Color3.fromRGB(255, 220, 0)
+headLockIndicator.BorderSizePixel = 0
+local headLockIndicatorCorner = Instance.new("UICorner")
+headLockIndicatorCorner.CornerRadius = UDim.new(1, 0)
+headLockIndicatorCorner.Parent = headLockIndicator
+headLockIndicator.Parent = headLockFrame
+
+-- Flight Section
+local flightFrame = createSection(162, Color3.fromRGB(60,40,80), Color3.fromRGB(0,180,255), "Vehicle Flight [F]")
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, 0, 0, 16)
+speedLabel.Position = UDim2.new(0, 0, 0, 20)
+speedLabel.Text = "  Speed: "..Config.Flight.Speed
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 200)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Font = Enum.Font.Code
+speedLabel.TextSize = 11
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = flightFrame
+
+local speedSlider = Instance.new("Frame")
+speedSlider.Size = UDim2.new(0.86, 0, 0, 7)
+speedSlider.Position = UDim2.new(0.07, 0, 0, 38)
+speedSlider.BackgroundColor3 = Color3.fromRGB(100, 80, 80)
+speedSlider.BorderSizePixel = 0
+local speedSliderCorner = Instance.new("UICorner")
+speedSliderCorner.CornerRadius = UDim.new(1, 0)
+speedSliderCorner.Parent = speedSlider
+speedSlider.Parent = flightFrame
+
+local speedFill = Instance.new("Frame")
+speedFill.Size = UDim2.new(Config.Flight.Speed/Config.Flight.maxSpeed, 0, 1, 0)
+speedFill.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+speedFill.BorderSizePixel = 0
+local speedFillCorner = Instance.new("UICorner")
+speedFillCorner.CornerRadius = UDim.new(1, 0)
+speedFillCorner.Parent = speedFill
+speedFill.Parent = speedSlider
+
+-- Add an orange circle to Speed slider
+local speedCircle = Instance.new("Frame")
+speedCircle.Size = UDim2.new(0, 16, 0, 16)
+speedCircle.Position = UDim2.new(Config.Flight.Speed / Config.Flight.maxSpeed, -8, 0.5, -8)
+speedCircle.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+speedCircle.BorderSizePixel = 0
+local speedCircleCorner = Instance.new("UICorner")
+speedCircleCorner.CornerRadius = UDim.new(1, 0)
+speedCircleCorner.Parent = speedCircle
+speedCircle.ZIndex = 1
+speedCircle.Parent = speedSlider
+
+local flightToggle = Instance.new("TextButton")
+flightToggle.Size = UDim2.new(0.7, 0, 0, 22)
+flightToggle.Position = UDim2.new(0.15, 0, 0, 60)
+flightToggle.Text = "Enable Flight"
+flightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+flightToggle.BackgroundColor3 = Color3.fromRGB(80, 60, 60)
+flightToggle.Font = Enum.Font.SourceSans
+flightToggle.TextSize = 13
+local flightToggleCorner = Instance.new("UICorner")
+flightToggleCorner.CornerRadius = UDim.new(0, 2)
+flightToggleCorner.Parent = flightToggle
+flightToggle.Parent = flightFrame
+
+-- Add toggle indicator (green)
+local flightIndicator = Instance.new("Frame")
+flightIndicator.Size = UDim2.new(0, 10, 0, 10)
+flightIndicator.Position = UDim2.new(0.88, 0, 0.18, 0)
+flightIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
+flightIndicator.BorderSizePixel = 0
+local flightIndicatorCorner = Instance.new("UICorner")
+flightIndicatorCorner.CornerRadius = UDim.new(1, 0)
+flightIndicatorCorner.Parent = flightIndicator
+flightIndicator.Parent = flightFrame
+
+-- NoClip Section (shorter)
+local noclipFrame = createSection(270, Color3.fromRGB(80,60,40), Color3.fromRGB(255,0,180), "NoClip [N]")
+noclipFrame.Size = UDim2.new(0.92, 0, 0, 60)
+
+local noclipToggle = Instance.new("TextButton")
+noclipToggle.Size = UDim2.new(0.7, 0, 0, 20)
+noclipToggle.Position = UDim2.new(0.15, 0, 0, 26)
+noclipToggle.Text = "Enable NoClip"
+noclipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+noclipToggle.BackgroundColor3 = Color3.fromRGB(80, 80, 60)
+noclipToggle.Font = Enum.Font.SourceSans
+noclipToggle.TextSize = 13
+local noclipToggleCorner = Instance.new("UICorner")
+noclipToggleCorner.CornerRadius = UDim.new(0, 2)
+noclipToggleCorner.Parent = noclipToggle
+noclipToggle.Parent = noclipFrame
+
+-- Add toggle indicator (red)
+local noclipIndicator = Instance.new("Frame")
+noclipIndicator.Size = UDim2.new(0, 10, 0, 10)
+noclipIndicator.Position = UDim2.new(0.88, 0, 0.18, 0)
+noclipIndicator.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+noclipIndicator.BorderSizePixel = 0
+local noclipIndicatorCorner = Instance.new("UICorner")
+noclipIndicatorCorner.CornerRadius = UDim.new(1, 0)
+noclipIndicatorCorner.Parent = noclipIndicator
+noclipIndicator.Parent = noclipFrame
+
+-- Signature with glow
+local signature = Instance.new("TextLabel")
+signature.Size = UDim2.new(1, 0, 0, 22)
+signature.Position = UDim2.new(0, 0, 1, -26)
+signature.Text = "by Jmasters | v1.0"
+signature.TextColor3 = Color3.fromRGB(0,255,180)
+signature.TextStrokeTransparency = 0.4
+signature.TextStrokeColor3 = Color3.fromRGB(0, 180, 255)
+signature.BackgroundTransparency = 1
+signature.Font = Enum.Font.GothamSemibold
+signature.TextSize = 14
+signature.TextXAlignment = Enum.TextXAlignment.Right
+signature.ZIndex = 2
+signature.Parent = mainFrame
+
+-- HeadLock Functionality
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = Config.HeadLock.Enabled
+FOVCircle.Radius = Config.HeadLock.FOV
+FOVCircle.Color = Config.UI.AccentColor
+FOVCircle.Thickness = 2
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+local function getHeadLockTarget()
+    local closest, closestDist = nil, Config.HeadLock.FOV
+    
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        if otherPlayer == player then continue end
+        
+        local character = otherPlayer.Character
+        if not character then continue end
+        
+        local head = character:FindFirstChild("Head")
+        if not head then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+        if not onScreen then continue end
+        
+        local mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        local targetPos = Vector2.new(screenPos.X, screenPos.Y)
+        local distance = (mousePos - targetPos).Magnitude
+        
+        if distance < closestDist then
+            closest = character
+            closestDist = distance
+        end
+    end
+    
+    return closest
+end
+
+local function updateHeadLock()
+    if not Config.HeadLock.Enabled then return end
+    
+    local target = getHeadLockTarget()
+    if not target then return end
+    
+    local head = target:FindFirstChild("Head")
+    if not head then return end
+    
+    local predictedPos = head.Position + (head.AssemblyLinearVelocity * Config.HeadLock.Prediction)
+    local currentLook = Camera.CFrame.LookVector
+    local desiredLook = (predictedPos - Camera.CFrame.Position).Unit
+    local smoothedLook = currentLook:Lerp(desiredLook, Config.HeadLock.Smoothing)
+    
+    Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + smoothedLook)
+end
+
+local function toggleHeadLock()
+    Config.HeadLock.Enabled = not Config.HeadLock.Enabled
+    FOVCircle.Visible = Config.HeadLock.Enabled
+    headLockToggle.Text = Config.HeadLock.Enabled and "DISABLE HEADLOCK" or "ENABLE HEADLOCK"
+    headLockToggle.BackgroundColor3 = Config.HeadLock.Enabled and Color3.fromRGB(60, 60, 65) or Color3.fromRGB(50, 50, 55)
+    headLockIndicator.BackgroundColor3 = Config.HeadLock.Enabled and Config.UI.AccentColor or Color3.fromRGB(100, 100, 100)
+end
+
+-- Flight Functionality
+local bg, bv
+local lastDirection = Vector3.new()
+
+local function enableFlight()
+    if Config.Flight.Enabled then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    Config.Flight.Enabled = true
+    humanoid.PlatformStand = true
+    
+    bg = Instance.new("BodyGyro")
+    bg.P = 20000
+    bg.D = 1000
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.CFrame = rootPart.CFrame
+    bg.Parent = rootPart
+    
+    bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Parent = rootPart
+    
+    flightToggle.Text = "DISABLE FLIGHT"
+    flightToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    flightIndicator.BackgroundColor3 = Config.UI.AccentColor
+end
+
+local function disableFlight()
+    if not Config.Flight.Enabled then return end
+    
+    Config.Flight.Enabled = false
+    if player.Character then
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+    end
+    
+    if bg then bg:Destroy() end
+    if bv then bv:Destroy() end
+    
+    flightToggle.Text = "ENABLE FLIGHT"
+    flightToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    flightIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+end
+
+local function updateFlight()
+    if not Config.Flight.Enabled then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart or not bg or not bv then return end
+    
+    local camera = workspace.CurrentCamera
+    local direction = Vector3.new()
+    local moving = false
+    
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+        direction = direction + (camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+        moving = true
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        direction = direction - (camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+        moving = true
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+        direction = direction + camera.CFrame.RightVector
+        moving = true
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+        direction = direction - camera.CFrame.RightVector
+        moving = true
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        direction = direction + Vector3.new(0, 1, 0)
+        moving = true
+    end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        direction = direction - Vector3.new(0, 1, 0)
+        moving = true
+    end
+    
+    if moving then
+        lastDirection = direction * Vector3.new(1, 0, 1)
+        if lastDirection.Magnitude > 0 then
+            lastDirection = lastDirection.Unit
+        end
+    end
+    
+    if direction.Magnitude > 0 then
+        direction = direction.Unit * Config.Flight.Speed
+    end
+    
+    bv.Velocity = direction
+    
+    if lastDirection.Magnitude > 0 then
+        local targetCFrame = CFrame.new(rootPart.Position, rootPart.Position + lastDirection)
+        bg.CFrame = bg.CFrame:Lerp(targetCFrame, 0.2)
+    else
+        bg.CFrame = camera.CoordinateFrame
+    end
+end
+
+local function toggleFlight()
+    if not Config.Flight.Enabled then
+        enableFlight()
+    else
+        disableFlight()
+    end
+end
+
+-- NoClip Functionality
+local noclipDebounce = false
+
+local function toggleNoClip()
+    if noclipDebounce then return end
+    noclipDebounce = true
+    
+    Config.NoClip.Enabled = not Config.NoClip.Enabled
+    local character = player.Character
+    
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = not Config.NoClip.Enabled
+            end
+        end
+    end
+    
+    noclipToggle.Text = Config.NoClip.Enabled and "DISABLE NOCLIP" or "ENABLE NOCLIP"
+    noclipToggle.BackgroundColor3 = Config.NoClip.Enabled and Color3.fromRGB(60, 60, 65) or Color3.fromRGB(50, 50, 55)
+    noclipIndicator.BackgroundColor3 = Config.NoClip.Enabled and Config.UI.AccentColor or Color3.fromRGB(100, 100, 100)
+    
+    noclipDebounce = false
+end
+
+-- Handle character respawns for NoClip
+player.CharacterAdded:Connect(function(newCharacter)
+    if Config.NoClip.Enabled then
+        for _, part in pairs(newCharacter:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- UI Controls
+local function updateFOV(newFOV)
+    Config.HeadLock.FOV = math.clamp(newFOV, Config.HeadLock.minFOV, Config.HeadLock.maxFOV)
+    fovLabel.Text = "  FOV: "..Config.HeadLock.FOV
+    fovFill.Size = UDim2.new(Config.HeadLock.FOV/Config.HeadLock.maxFOV, 0, 1, 0)
+    fovCircle.Position = UDim2.new(Config.HeadLock.FOV / Config.HeadLock.maxFOV, -10, 0.5, -10)
+end
+
+local function updateSpeed(newSpeed)
+    Config.Flight.Speed = math.clamp(newSpeed, Config.Flight.minSpeed, Config.Flight.maxSpeed)
+    speedLabel.Text = "  Speed: "..Config.Flight.Speed
+    speedFill.Size = UDim2.new(Config.Flight.Speed/Config.Flight.maxSpeed, 0, 1, 0)
+    speedCircle.Position = UDim2.new(Config.Flight.Speed / Config.Flight.maxSpeed, -10, 0.5, -10)
+end
+
+-- Prevent slider input from interfering with UI dragging
+local function stopPropagation(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end
+
+-- FOV Slider
+fovSlider.InputBegan:Connect(function(input)
+    stopPropagation(input) -- Prevent propagation
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local percent = (input.Position.X - fovSlider.AbsolutePosition.X) / fovSlider.AbsoluteSize.X
+        updateFOV(math.floor(percent * Config.HeadLock.maxFOV + 0.5))
+    end
+end)
+
+fovSlider.InputChanged:Connect(function(input)
+    stopPropagation(input) -- Prevent propagation
+    if input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+        local percent = (input.Position.X - fovSlider.AbsolutePosition.X) / fovSlider.AbsoluteSize.X
+        updateFOV(math.floor(percent * Config.HeadLock.maxFOV + 0.5))
+    end
+end)
+
+-- Speed Slider
+speedSlider.InputBegan:Connect(function(input)
+    stopPropagation(input) -- Prevent propagation
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local percent = (input.Position.X - speedSlider.AbsolutePosition.X) / speedSlider.AbsoluteSize.X
+        updateSpeed(math.floor(percent * Config.Flight.maxSpeed + 0.5))
+    end
+end)
+
+speedSlider.InputChanged:Connect(function(input)
+    stopPropagation(input) -- Prevent propagation
+    if input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+        local percent = (input.Position.X - speedSlider.AbsolutePosition.X) / speedSlider.AbsoluteSize.X
+        updateSpeed(math.floor(percent * Config.Flight.maxSpeed + 0.5))
+    end
+end)
+
+-- Slider drag logic for fovCircle
+local fovDragging = false
+fovCircle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        fovDragging = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        fovDragging = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if fovDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mouseX = input.Position.X
+        local sliderAbsPos = fovSlider.AbsolutePosition.X
+        local sliderAbsSize = fovSlider.AbsoluteSize.X
+        local percent = math.clamp((mouseX - sliderAbsPos) / sliderAbsSize, 0, 1)
+        updateFOV(math.floor(percent * Config.HeadLock.maxFOV + 0.5))
+    end
+end)
+
+-- Slider drag logic for speedCircle
+local speedDragging = false
+speedCircle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        speedDragging = true
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        speedDragging = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if speedDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mouseX = input.Position.X
+        local sliderAbsPos = speedSlider.AbsolutePosition.X
+        local sliderAbsSize = speedSlider.AbsoluteSize.X
+        local percent = math.clamp((mouseX - sliderAbsPos) / sliderAbsSize, 0, 1)
+        updateSpeed(math.floor(percent * Config.Flight.maxSpeed + 0.5))
+    end
+end)
+
+-- Example: Modern toggle button with animation and glow
+local function createToggleButton(parent, text, accentColor)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.7, 0, 0, 28)
+    btn.Position = UDim2.new(0.15, 0, 0, 54)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 15
+    btn.BackgroundColor3 = accentColor
+    btn.BackgroundTransparency = 0.18
+    btn.AutoButtonColor = false
+    btn.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = btn
+    local glow = Instance.new("UIStroke")
+    glow.Color = accentColor
+    glow.Thickness = 2
+    glow.Transparency = 0.4
+    glow.Parent = btn
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.13), {BackgroundTransparency=0.08}):Play()
+        TweenService:Create(glow, TweenInfo.new(0.13), {Transparency=0}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.13), {BackgroundTransparency=0.18}):Play()
+        TweenService:Create(glow, TweenInfo.new(0.13), {Transparency=0.4}):Play()
+    end)
+    return btn
+end
+
+-- HeadLock toggles
+headLockToggle = createToggleButton(headLockFrame, "Enable HeadLock", Color3.fromRGB(0, 255, 180))
+headLockToggle.Position = UDim2.new(0.15, 0, 0, 60)
+headLockToggle.MouseButton1Click:Connect(toggleHeadLock)
+
+-- Flight toggles
+flightToggle = createToggleButton(flightFrame, "Enable Flight", Color3.fromRGB(0, 180, 255))
+flightToggle.Position = UDim2.new(0.15, 0, 0, 60)
+flightToggle.MouseButton1Click:Connect(toggleFlight)
+
+-- NoClip toggles
+noclipToggle = createToggleButton(noclipFrame, "Enable NoClip", Color3.fromRGB(255, 0, 180))
+noclipToggle.Position = UDim2.new(0.15, 0, 0, 26)
+noclipToggle.MouseButton1Click:Connect(toggleNoClip)
+
+-- Keybinds
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Config.HeadLock.Key then toggleHeadLock() end
+    if input.KeyCode == Config.Flight.Key then toggleFlight() end
+    if input.KeyCode == Config.NoClip.Key then toggleNoClip() end
+    if input.KeyCode == Config.UI.ToggleKey then toggleUI() end
+end)
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Radius = Config.HeadLock.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    updateHeadLock()
+    updateFlight()
+end)
+
+-- Cleanup
+player.CharacterAdded:Connect(function(newChar)
+    newChar:WaitForChild("Humanoid").Died:Connect(function()
+        if Config.Flight.Enabled then disableFlight() end
+    end)
+end)
+
+print("Jailbreak Tools Loaded | HeadLock(Q) | Flight(F) | NoClip(N) | UI Toggle(RightShift)")
